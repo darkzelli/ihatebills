@@ -1,0 +1,82 @@
+# Builds the macOS (Apple Silicon + Intel) and Windows apps on a v* tag and publishes them as a
+# GitHub release with latest.json, which is what installed apps check (Settings → Updates).
+#
+# Needs one repository secret (Settings → Secrets and variables → Actions):
+#   TAURI_SIGNING_PRIVATE_KEY   contents of ~/.tauri/ihatebills.key
+# and, only if that key has a password, TAURI_SIGNING_PRIVATE_KEY_PASSWORD.
+#
+# To release: bump "version" in package.json, commit, tag v<version>, push the tag.
+# `pnpm version patch && git push --follow-tags` does all of that.
+name: release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  # One draft release up front, so the parallel builds don't each try to create it.
+  create:
+    runs-on: ubuntu-latest
+    outputs:
+      id: ${{ steps.release.outputs.id }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VER="$(node -p 'require("./package.json").version')"
+          TAG="v$VER"
+          gh release view "$TAG" >/dev/null 2>&1 || gh release create "$TAG" --draft --title "ihatebills $VER" --notes "ihatebills $VER" --target "$GITHUB_SHA"
+          echo "id=$(gh api "repos/$GITHUB_REPOSITORY/releases" --jq ".[] | select(.tag_name == \"$TAG\") | .id" | head -1)" >> "$GITHUB_OUTPUT"
+
+  build:
+    needs: create
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest
+            target: aarch64-apple-darwin
+          - os: macos-latest
+            target: x86_64-apple-darwin
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+      - run: pnpm install --frozen-lockfile
+      - uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        with:
+          releaseId: ${{ needs.create.outputs.id }}
+          args: --target ${{ matrix.target }} --config src-tauri/tauri.release.conf.json
+
+  # Publishing last means latest.json never points at a release that's missing a platform.
+  publish:
+    needs: [create, build]
+    runs-on: ubuntu-latest
+    steps:
+      - env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh api -X PATCH "repos/$GITHUB_REPOSITORY/releases/${{ needs.create.outputs.id }}" -F draft=false -f make_latest=true

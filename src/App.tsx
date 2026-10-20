@@ -14,6 +14,7 @@ import { billTitle } from "./lib/format";
 import * as storage from "./lib/storage";
 import { tauriBackend } from "./lib/tauri";
 import { useDb } from "./store/db";
+import { checkOnLaunch, useUpdates } from "./store/updates";
 import type { DockNode, TabsNode } from "./lib/dock";
 import { PANE_TITLES, type PaneId, useLayout } from "./store/layout";
 import { useUi } from "./store/ui";
@@ -94,11 +95,13 @@ export default function App() {
   const locked = storage.useVault((s) => s.status === "locked");
   const [settings, setSettings] = useState(false);
   const [help, setHelp] = useState(false);
+  const update = useUpdates((s) => s.status.kind === "available" ? s.status.info.version : null);
 
   useEffect(() => {
     storage.init(tauriBackend)
       .then(() => { if (storage.useVault.getState().status !== "locked") return useDb.getState().load(); })
       .catch((e) => useDb.setState({ error: `Could not open your bills: ${e}`, loaded: true }));
+    checkOnLaunch();
   }, []);
 
   useEffect(() => {
@@ -140,6 +143,7 @@ export default function App() {
       <div className="topbar">
         <span className="brand">i<b>hate</b>bills</span>
         <span className="spacer" />
+        {update && <button className="btn sm on" onClick={() => setSettings(true)} title="Open Settings to install it">Update to {update}</button>}
         <button className="btn sm ghost" onClick={() => useLayout.getState().resetLayout()} title="Put the panels back where they started">Reset layout</button>
         <ThemeToggle />
         <button className="icon-btn" onClick={() => setHelp(true)} title="Instructions" aria-label="Instructions">

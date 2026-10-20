@@ -217,6 +217,20 @@ const TOPICS: { id: string; title: string; body: ReactNode }[] = [
     ),
   },
   {
+    id: "updates",
+    title: "Updates",
+    body: (
+      <>
+        <p>The app can update itself from the GitHub repo it's published on. Under <b>Settings</b>, paste the repo's link (e.g. <span className="mono">github.com/you/ihatebills</span>) and click <b>Save</b>.</p>
+        <ul>
+          <li>With <b>Check for updates when the app opens</b> ticked, an <b>Update to …</b> button appears in the top bar when there's a new version. It opens Settings.</li>
+          <li><b>Install and restart</b> downloads the new version, checks its signature, installs it and reopens the app. Your bills and settings are kept.</li>
+          <li>Only versions signed with this app's key are installed, so an update from a different or tampered-with copy of the app is refused.</li>
+        </ul>
+      </>
+    ),
+  },
+  {
     id: "keys",
     title: "Keyboard shortcuts",
     body: (

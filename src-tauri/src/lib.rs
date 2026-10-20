@@ -1,10 +1,13 @@
 mod commands;
+mod updates;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_updater::Builder::new().build())
+        .manage(updates::Pending::default())
         .setup(|app| {
             if let Err(e) = commands::cleanup(app.handle()) {
                 eprintln!("could not clean up temp files: {e}");
@@ -20,6 +23,8 @@ pub fn run() {
             commands::read_scan_file,
             commands::read_import_file,
             commands::export_file,
+            updates::update_check,
+            updates::update_install,
         ])
         .run(tauri::generate_context!())
         .expect("error while running ihatebills");

@@ -1,7 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "ihatebills",
-  "version": "0.1.0",
+  "version": "../package.json",
   "identifier": "com.ihatebills.desktop",
   "build": {
     "beforeDevCommand": "pnpm dev",
@@ -33,6 +33,17 @@
       "icons/128x128@2x.png",
       "icons/icon.icns",
       "icons/icon.ico"
-    ]
+    ],
+    "macOS": {
+      "signingIdentity": "-"
+    }
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDM3M0E0NEZCMUNBQ0I1ODAKUldTQXRhd2MrMFE2Tit5QUM2UlJVaEcxTkhGQitKQ0JPcWlpNktQZnVKQmNTalJIaFpXczU4cmwK",
+      "windows": {
+        "installMode": "passive"
+      }
+    }
   }
 }
