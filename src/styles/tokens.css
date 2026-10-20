@@ -1,0 +1,69 @@
+/* Tokens adapted from ssbv. Dark is the base; light overrides below.
+   Flat surfaces, 1 px lines, no blur. */
+@font-face { font-family: "Geist"; src: url("../assets/fonts/Geist-Variable.woff2") format("woff2"); font-weight: 100 900; font-display: swap; }
+@font-face { font-family: "Geist Mono"; src: url("../assets/fonts/GeistMono-Variable.woff2") format("woff2"); font-weight: 100 900; font-display: swap; }
+
+:root {
+  color-scheme: dark;
+  --ground: #0B0D10;
+  --canvas: #101318;
+  --surface: #14171C;
+  --surface2: #1B1F26;
+  --surface3: #232830;
+  --well: #0E1115;
+  --line: #262B33;
+  --line-soft: #1E232A;
+  --line2: #2A303A;
+  --ink: #F2F4F7;
+  --text2: #C3CAD3;
+  --muted: #9AA3AF;
+  --dim: #8A93A0;
+  --accent: #5CE0A4;
+  --accent-soft: rgba(92, 224, 164, 0.10);
+  --on-accent: #062014;
+  --ok: #5CE0A4;
+  --warn: #FFC24D;
+  --bad: #FF8A73;
+  --info: #7DB4FF;
+  --orange: #FFA05C;
+  --purple: #B79BFF;
+  --pink: #FF8FC7;
+  --shadow: 0 12px 40px rgba(0, 0, 0, 0.55);
+  --scrim: rgba(0, 0, 0, 0.55);
+
+  --r-xs: 8px;
+  --r-sm: 12px;
+  --r-md: 16px;
+
+  --font: "Geist", ui-sans-serif, system-ui, sans-serif;
+  --mono: "Geist Mono", ui-monospace, monospace;
+}
+
+:root[data-theme="light"] {
+  color-scheme: light;
+  --ground: #FFFFFF;
+  --canvas: #F6F7F9;
+  --surface: #F3F4F6;
+  --surface2: #ECEEF1;
+  --surface3: #E2E5EA;
+  --well: #FFFFFF;
+  --line: #E1E4E9;
+  --line-soft: #EDEFF2;
+  --line2: #CDD2DA;
+  --ink: #12151A;
+  --text2: #343B46;
+  --muted: #5B6470;
+  --dim: #6B7380;
+  --accent: #0E9F62;
+  --accent-soft: rgba(14, 159, 98, 0.10);
+  --on-accent: #FFFFFF;
+  --ok: #0E8F58;
+  --warn: #A86A00;
+  --bad: #C8402B;
+  --info: #2563C9;
+  --orange: #B85500;
+  --purple: #7046D6;
+  --pink: #C2357F;
+  --shadow: 0 12px 40px rgba(20, 30, 50, 0.18);
+  --scrim: rgba(20, 25, 35, 0.35);
+}
