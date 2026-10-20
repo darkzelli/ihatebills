@@ -2,6 +2,7 @@ import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import type { ReactNode } from "react";
 import { type SectionId, useUi } from "../../store/ui";
+import { Chevron } from "../ui/Chevron";
 
 /** Collapsible inspector section (collapse state remembered); drag ⠿ to reorder sections. */
 export function Section({ id, title, extra, children }: { id: SectionId; title: ReactNode; extra?: ReactNode; children: ReactNode }) {
@@ -12,7 +13,7 @@ export function Section({ id, title, extra, children }: { id: SectionId; title: 
     <div ref={setNodeRef} className={`section ${isDragging ? "dragging" : ""}`} style={{ transform: CSS.Translate.toString(transform), transition }}>
       <div className="section-head" onClick={() => toggle(`sec:${id}`)}>
         <span className="grip" title="Drag to reorder sections" onClick={(e) => e.stopPropagation()} {...attributes} {...listeners}>⠿</span>
-        <span className={`chev ${collapsed ? "closed" : ""}`}>▾</span>
+        <Chevron open={!collapsed} />
         <span className="label">{title}</span>
         <span className="spacer" />
         {extra && <span className="mono dim" style={{ fontSize: 12 }} onClick={(e) => e.stopPropagation()}>{extra}</span>}

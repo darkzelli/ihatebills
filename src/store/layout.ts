@@ -2,7 +2,7 @@
 // or tab onto another group to make it a tab, onto a group's edge to split it, or
 // onto the workspace edge to dock it full-width/height. Survives restarts.
 import { create } from "zustand";
-import { activate, canDrop, DEFAULT_TREE, DOCK_SIZE, type DockNode, type DropTarget, type Edge, isValid, movePane, type PaneId } from "../lib/dock";
+import { activate, addMissingPanes, canDrop, DEFAULT_TREE, DOCK_SIZE, type DockNode, type DropTarget, type Edge, isValid, movePane, type PaneId } from "../lib/dock";
 
 export type { PaneId } from "../lib/dock";
 
@@ -13,6 +13,8 @@ function load(): DockNode {
   try {
     const v = JSON.parse(localStorage.getItem(KEY) ?? "null");
     if (isValid(v)) return v;
+    const upgraded = v && addMissingPanes(v);
+    if (isValid(upgraded)) return upgraded;
   } catch { /* storage unavailable */ }
   return structuredClone(DEFAULT_TREE); // saveSizes mutates in place
 }
@@ -20,7 +22,7 @@ function save(tree: DockNode) {
   try { localStorage.setItem(KEY, JSON.stringify(tree)); } catch { /* ignore */ }
 }
 
-export const PANE_TITLES: Record<PaneId, string> = { list: "Bills", inspector: "Inspector", viewer: "Viewer", totals: "Totals" };
+export const PANE_TITLES: Record<PaneId, string> = { list: "Bills", inspector: "Inspector", viewer: "Viewer", totals: "Totals", schedule: "Schedule" };
 
 /** Outline of the space a dropped pane would take, in viewport px. */
 export interface DropHint { target: DropTarget; rect: { left: number; top: number; width: number; height: number }; label: string }

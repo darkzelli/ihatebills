@@ -1,21 +1,35 @@
 // Typed wrappers around the Rust commands in src-tauri/src/commands.rs.
-import { convertFileSrc, invoke } from "@tauri-apps/api/core";
-import type { Attachment } from "../types";
+import { invoke } from "@tauri-apps/api/core";
+import type { Bytes } from "./crypto";
+import type { Backend } from "./storage";
 
-export const loadDb = () => invoke<string | null>("load_db");
-export const saveDb = (json: string) => invoke<void>("save_db", { json });
-export const importAttachment = (path: string) => invoke<Attachment>("import_attachment", { path });
-export const readImportFile = async (path: string) => new Uint8Array(await invoke<ArrayBuffer>("read_import_file", { path }));
-export const deleteAttachment = (file: string) => invoke<void>("delete_attachment", { file });
-export const exportAttachment = (file: string, dest: string) => invoke<void>("export_attachment", { file, dest });
+const NOT_FOUND = "not found";
+const bytes = async (p: Promise<ArrayBuffer>) => new Uint8Array(await p);
+
+export const tauriBackend: Backend = {
+  async read(key) {
+    try {
+      return await bytes(invoke<ArrayBuffer>("store_read", { key }));
+    } catch (e) {
+      if (e === NOT_FOUND) return null;
+      throw e;
+    }
+  },
+  write: (key, data) => invoke<void>("store_write", data, { headers: { key: encodeURIComponent(key) } }),
+  remove: (key) => invoke<void>("store_delete", { key }),
+  listAttachments: () => invoke<string[]>("store_list_attachments"),
+};
+
+export const readScanFile = (path: string) => bytes(invoke<ArrayBuffer>("read_scan_file", { path }));
+export const readImportFile = (path: string) => bytes(invoke<ArrayBuffer>("read_import_file", { path }));
+export const exportFile = (dest: string, data: Bytes) => invoke<void>("export_file", data, { headers: { dest: encodeURIComponent(dest) } });
 
 let dir: Promise<string> | null = null;
-export const attachmentsDir = () => (dir ??= invoke<string>("attachments_dir"));
+const attachmentsDir = () => (dir ??= invoke<string>("attachments_dir"));
 
-/** Absolute path and webview URL for an attachment. */
-export async function attachmentPath(a: Attachment) {
+/** Absolute path of a stored scan, for opening it in the default app. */
+export async function attachmentPath(file: string) {
   const d = await attachmentsDir();
   const sep = d.includes("\\") ? "\\" : "/";
-  return `${d}${sep}${a.file}`;
+  return `${d}${sep}${file}`;
 }
-export const attachmentUrl = async (a: Attachment) => convertFileSrc(await attachmentPath(a));

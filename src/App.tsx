@@ -1,12 +1,18 @@
 import { ask } from "@tauri-apps/plugin-dialog";
-import { Fragment, useEffect } from "react";
+import { Fragment, useEffect, useState } from "react";
 import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
 import { BillList } from "./components/BillList/BillList";
+import { HelpDialog } from "./components/Help/HelpDialog";
 import { Inspector } from "./components/Inspector/Inspector";
+import { UnlockScreen } from "./components/Settings/Security";
+import { Schedule } from "./components/Schedule/Schedule";
+import { SettingsDialog } from "./components/Settings/SettingsDialog";
 import { ThemeToggle } from "./components/ThemeToggle";
 import { TotalsBar } from "./components/Totals/TotalsBar";
 import { Viewer } from "./components/Viewer/Viewer";
 import { billTitle } from "./lib/format";
+import * as storage from "./lib/storage";
+import { tauriBackend } from "./lib/tauri";
 import { useDb } from "./store/db";
 import type { DockNode, TabsNode } from "./lib/dock";
 import { PANE_TITLES, type PaneId, useLayout } from "./store/layout";
@@ -17,6 +23,7 @@ const PANES: Record<PaneId, () => React.ReactElement> = {
   inspector: () => <Inspector />,
   viewer: () => <Viewer />,
   totals: () => <TotalsBar />,
+  schedule: () => <Schedule />,
 };
 
 function TabGroup({ node }: { node: TabsNode }) {
@@ -84,12 +91,19 @@ export default function App() {
   const error = useDb((s) => s.error);
   const dragging = useLayout((s) => !!s.drag);
   const tree = useLayout((s) => s.tree);
+  const locked = storage.useVault((s) => s.status === "locked");
+  const [settings, setSettings] = useState(false);
+  const [help, setHelp] = useState(false);
 
-  useEffect(() => { useDb.getState().load(); }, []);
+  useEffect(() => {
+    storage.init(tauriBackend)
+      .then(() => { if (storage.useVault.getState().status !== "locked") return useDb.getState().load(); })
+      .catch((e) => useDb.setState({ error: `Could not open your bills: ${e}`, loaded: true }));
+  }, []);
 
   useEffect(() => {
     const onKey = async (e: KeyboardEvent) => {
-      if (document.querySelector(".scrim")) return;
+      if (document.querySelector(".scrim") || !useDb.getState().loaded) return;
       if (e.key === "Escape" && useLayout.getState().maximized) { useLayout.setState({ maximized: null }); return; }
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "n") {
         e.preventDefault();
@@ -119,6 +133,8 @@ export default function App() {
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
+  if (locked) return <UnlockScreen />;
+
   return (
     <div className="app">
       <div className="topbar">
@@ -126,6 +142,18 @@ export default function App() {
         <span className="spacer" />
         <button className="btn sm ghost" onClick={() => useLayout.getState().resetLayout()} title="Put the panels back where they started">Reset layout</button>
         <ThemeToggle />
+        <button className="icon-btn" onClick={() => setHelp(true)} title="Instructions" aria-label="Instructions">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+            <circle cx="12" cy="12" r="10" />
+            <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3M12 17h.01" />
+          </svg>
+        </button>
+        <button className="icon-btn" onClick={() => setSettings(true)} title="Settings" aria-label="Settings">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+            <circle cx="12" cy="12" r="3" />
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z" />
+          </svg>
+        </button>
       </div>
       <div>
         {error && <div className="error-bar"><span className="spacer">{error}</span><button className="icon-btn" onClick={() => useDb.setState({ error: null })}>✕</button></div>}
@@ -136,6 +164,8 @@ export default function App() {
         )}
       </div>
       <DragGhost />
+      {settings && <SettingsDialog onClose={() => setSettings(false)} />}
+      {help && <HelpDialog onClose={() => setHelp(false)} />}
     </div>
   );
 }

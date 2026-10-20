@@ -1,6 +1,6 @@
 // Map the columns of a spreadsheet / claims export onto bill fields, preview, then add the bills.
 import { useMemo, useState } from "react";
-import { GROUPS } from "../../fields";
+import { GROUPS, leafFields } from "../../fields";
 import { display } from "../../lib/format";
 import { autoMap, type Cell, findHeaderRow, type Mapping, NEW_FIELD, planImport, type Table } from "../../lib/import";
 import { sortedCategories, useDb } from "../../store/db";
@@ -10,7 +10,7 @@ import { Dialog } from "../ui/Dialog";
 const filled = (c: Cell | undefined) => c != null && String(c).trim() !== "";
 
 export function ImportDialog({ fileName, tables, onClose }: { fileName: string; tables: Table[]; onClose(): void }) {
-  const fieldDefs = useDb((s) => s.fieldDefs);
+  const fieldDefs = useDb((s) => leafFields(s.fieldDefs));
   const statuses = useDb((s) => s.statuses);
   const bills = useDb((s) => s.bills);
   const categories = useDb((s) => s.categories);

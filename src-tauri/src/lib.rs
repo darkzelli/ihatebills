@@ -5,14 +5,21 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
+        .setup(|app| {
+            if let Err(e) = commands::cleanup(app.handle()) {
+                eprintln!("could not clean up temp files: {e}");
+            }
+            Ok(())
+        })
         .invoke_handler(tauri::generate_handler![
-            commands::load_db,
-            commands::save_db,
+            commands::store_read,
+            commands::store_write,
+            commands::store_delete,
+            commands::store_list_attachments,
             commands::attachments_dir,
-            commands::import_attachment,
-            commands::delete_attachment,
-            commands::export_attachment,
+            commands::read_scan_file,
             commands::read_import_file,
+            commands::export_file,
         ])
         .run(tauri::generate_context!())
         .expect("error while running ihatebills");

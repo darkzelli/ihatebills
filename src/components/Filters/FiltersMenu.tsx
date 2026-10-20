@@ -1,7 +1,8 @@
 // What the Filters button opens: show/hide the filter row and manage your own filters.
 import { useState } from "react";
 import { statusColor } from "../../lib/format";
-import { describeFilter } from "../../lib/filters";
+import { describeFilter, filterUsesDeletedField } from "../../lib/filters";
+import { leafFields } from "../../fields";
 import { useDb } from "../../store/db";
 import { useUi } from "../../store/ui";
 import type { FilterDef } from "../../types";
@@ -13,7 +14,7 @@ export function FiltersMenu({ onClose }: { onClose(): void }) {
   const showFilters = useUi((s) => s.showFilters);
   const setShowFilters = useUi((s) => s.setShowFilters);
   const filters = useDb((s) => s.filters);
-  const fields = useDb((s) => s.fieldDefs);
+  const fields = useDb((s) => leafFields(s.fieldDefs));
   const statuses = useDb((s) => s.statuses);
   const statusColors = useDb((s) => s.statusColors);
   const [editing, setEditing] = useState<FilterDef | "new" | null>(null);
@@ -43,7 +44,7 @@ export function FiltersMenu({ onClose }: { onClose(): void }) {
         {filters.length === 0 && <span className="tb-hint">None yet. Make one to quickly find, say, a family member's unpaid bills.</span>}
         {filters.map((f) => (
           <div key={f.id} className="tb-line">
-            <span style={{ fontWeight: 500 }}>{f.label}</span>
+            <span style={{ fontWeight: 500 }}>{filterUsesDeletedField(f, fields) && <span className="flag" title="Uses a deleted field">⚠ </span>}{f.label}</span>
             <span className="tb-hint" style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{describeFilter(f, fields)}</span>
             <button className="icon-btn" title="Edit" onClick={() => setEditing(f)}>✎</button>
           </div>

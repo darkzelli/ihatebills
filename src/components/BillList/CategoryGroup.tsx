@@ -7,6 +7,7 @@ import { formatCents } from "../../lib/money";
 import { useDb } from "../../store/db";
 import { useUi } from "../../store/ui";
 import type { Bill, Category } from "../../types";
+import { Chevron } from "../ui/Chevron";
 import { TrashIcon } from "../ui/TrashIcon";
 import { BillRow } from "./BillRow";
 
@@ -40,10 +41,10 @@ function GroupView({ category, bills, collapsed, dragDisabled, hot, nodeRef, sty
   };
 
   return (
-    <div ref={nodeRef} style={style} className={`cat ${hot ? "cat-drop" : ""} ${className}`}>
+    <div ref={nodeRef} style={style} className={`cat ${collapsed ? "collapsed" : ""} ${hot ? "cat-drop" : ""} ${className}`}>
       <div className="cat-head" onClick={toggle}>
         {category ? <span className="grip" title="Drag to reorder categories" onClick={(e) => e.stopPropagation()} {...handle}>⠿</span> : <span style={{ width: 18 }} />}
-        <span className={`chev ${collapsed ? "closed" : ""}`}>▾</span>
+        <Chevron open={!collapsed} />
         {editing && category ? (
           <input className="input cat-name-input" autoFocus defaultValue={name} onClick={(e) => e.stopPropagation()}
             onBlur={(e) => { renameCategory(category.id, e.target.value.trim() || name); setEditing(false); }}
@@ -89,7 +90,7 @@ export function CategoryOverlay({ category, bills }: { category: Category; bills
   return (
     <div className="cat-overlay">
       <div className="cat-head">
-        <span className="grip">⠿</span><span className="chev closed">▾</span>
+        <span className="grip">⠿</span><Chevron open={false} />
         <span className="cat-name">{category.name}</span><span className="cat-count">{bills.length}</span>
         <span className="spacer" /><span className="cat-sum">{formatCents(owed(bills))}</span>
       </div>

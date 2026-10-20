@@ -1,6 +1,6 @@
 // Bill list filters: one built-in per status, plus the user's own (every condition must match).
 import type { Bill, FieldDef, FilterDef, Where } from "../types";
-import { matches } from "./totals";
+import { fieldLabel, matches } from "./totals";
 
 export const statusFilterId = (status: string) => `status:${status}`;
 
@@ -14,8 +14,11 @@ export function filterTest(id: string, filters: FilterDef[], statuses: string[])
   return f ? (b) => f.conditions.every((w) => matches(b, w)) : null;
 }
 
+/** Whether a filter checks a field that no longer exists. */
+export const filterUsesDeletedField = (f: FilterDef, fields: FieldDef[]) => f.conditions.some((w) => !fields.some((d) => d.key === w.field));
+
 export function describeWhere(w: Where, fields: FieldDef[]): string {
-  const label = fields.find((f) => f.key === w.field)?.label ?? w.field;
+  const label = fieldLabel(w.field, fields);
   const cond = w.op === "filled" ? "is filled in" : w.op === "empty" ? "is empty" : w.op === "eq" ? `is “${w.value ?? ""}”` : `is not “${w.value ?? ""}”`;
   return `${label} ${cond}`;
 }

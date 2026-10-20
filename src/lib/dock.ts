@@ -1,7 +1,7 @@
 // Dock layout tree: splits (rows/columns of children with % sizes) and tab groups
 // (one or more panes, one shown). Pure functions; every op returns a new tree.
 
-export type PaneId = "list" | "inspector" | "viewer" | "totals";
+export type PaneId = "list" | "inspector" | "viewer" | "totals" | "schedule";
 export type Edge = "left" | "right" | "top" | "bottom";
 
 export interface TabsNode { type: "tabs"; id: string; panes: PaneId[]; active: PaneId }
@@ -14,7 +14,7 @@ export type DropTarget =
   | { kind: "split"; node: string; edge: Edge }
   | { kind: "dock"; edge: Edge };
 
-export const ALL_PANES: PaneId[] = ["totals", "list", "inspector", "viewer"];
+export const ALL_PANES: PaneId[] = ["totals", "list", "inspector", "viewer", "schedule"];
 /** Share of the workspace a pane docked along an edge takes. */
 export const DOCK_SIZE = 30;
 
@@ -27,7 +27,7 @@ export const split = (dir: "row" | "col", children: DockNode[], sizes: number[],
 
 export const DEFAULT_TREE: DockNode = split("col", [
   tabs(["totals"], "t-totals"),
-  split("row", [tabs(["list"], "t-list"), tabs(["inspector"], "t-insp"), tabs(["viewer"], "t-view")], [28, 34, 38], "s-cols"),
+  split("row", [tabs(["list"], "t-list"), tabs(["inspector"], "t-insp"), tabs(["viewer", "schedule"], "t-view")], [28, 34, 38], "s-cols"),
 ], [22, 78], "s-root");
 
 const dirOf = (e: Edge) => (e === "left" || e === "right" ? "row" : "col");
@@ -51,6 +51,15 @@ export function isValid(n: unknown): n is DockNode {
       (x.type === "split" && (x.dir === "row" || x.dir === "col") && Array.isArray(x.children) && x.children.length > 1 &&
         Array.isArray(x.sizes) && x.sizes.length === x.children.length && x.children.every(ok)));
   return ok(n) && panesIn(n as DockNode).sort().join() === [...ALL_PANES].sort().join();
+}
+
+/** A saved layout from before a pane existed: add each missing pane as a tab beside the viewer (or the first group). */
+export function addMissingPanes(n: DockNode): DockNode {
+  const have = panesIn(n);
+  const missing = ALL_PANES.filter((p) => !have.includes(p));
+  if (!missing.length) return n;
+  const host = findTabs(n, (t) => t.panes.includes("viewer")) ?? findTabs(n, () => true);
+  return host ? mapNode(n, host.id, (x) => (x.type === "tabs" ? { ...x, panes: [...x.panes, ...missing] } : x)) : n;
 }
 
 /** Tidy after removals: drop empty groups, unwrap one-child splits, merge same-direction nested splits. */

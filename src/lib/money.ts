@@ -20,3 +20,6 @@ export function parseCents(s: string): number | null {
 
 /** Cents → plain editable text ("1234.50"). */
 export const centsToInput = (c: number | null | undefined) => (c == null ? "" : (c / 100).toFixed(2));
+
+/** Drops anything that can't be part of a number as it's typed; money also allows "$" and "(...)" negatives. */
+export const numericOnly = (s: string, money = false) => s.replace(money ? /[^0-9.,\-$()]/g : /[^0-9.,\-]/g, "");

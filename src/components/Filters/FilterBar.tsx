@@ -2,7 +2,8 @@
 // Click a chip to filter the list, click it again (or All) to clear; double-click your own to edit.
 import { useEffect, useRef, useState } from "react";
 import { statusColor } from "../../lib/format";
-import { describeFilter, filterTest, statusFilterId } from "../../lib/filters";
+import { describeFilter, filterTest, filterUsesDeletedField, statusFilterId } from "../../lib/filters";
+import { leafFields } from "../../fields";
 import { useDb } from "../../store/db";
 import { useUi } from "../../store/ui";
 import type { FilterDef } from "../../types";
@@ -13,7 +14,7 @@ export function FilterBar() {
   const statuses = useDb((s) => s.statuses);
   const statusColors = useDb((s) => s.statusColors);
   const filters = useDb((s) => s.filters);
-  const fields = useDb((s) => s.fieldDefs);
+  const fields = useDb((s) => leafFields(s.fieldDefs));
   const active = useUi((s) => s.filter);
   const setFilter = useUi((s) => s.setFilter);
   const [editing, setEditing] = useState<FilterDef | "new" | null>(null);
@@ -52,12 +53,16 @@ export function FilterBar() {
         );
       })}
       {filters.length > 0 && <span className="filter-sep" />}
-      {filters.map((f) => (
-        <button key={f.id} className={`chip ${active === f.id ? "on" : ""}`} onClick={() => toggle(f.id)}
-          onDoubleClick={() => setEditing(f)} title={`${describeFilter(f, fields)}\nDouble-click to edit`}>
-          {f.label} <span className="chip-n">{count(f.id)}</span>
-        </button>
-      ))}
+      {filters.map((f) => {
+        const broken = filterUsesDeletedField(f, fields);
+        return (
+          <button key={f.id} className={`chip ${active === f.id ? "on" : ""} ${broken ? "broken" : ""}`} onClick={() => toggle(f.id)}
+            onDoubleClick={() => setEditing(f)}
+            title={`${broken ? "Uses a deleted field. Double-click to fix.\n" : ""}${describeFilter(f, fields)}\nDouble-click to edit`}>
+            {broken && <span className="flag">⚠</span>}{f.label} <span className="chip-n">{count(f.id)}</span>
+          </button>
+        );
+      })}
       <button className="chip add" onClick={() => setEditing("new")} title="Make your own filter">＋ Filter</button>
       {editing && <FilterEditor initial={editing === "new" ? null : editing} onClose={() => setEditing(null)} />}
     </div>

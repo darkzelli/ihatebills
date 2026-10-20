@@ -1,7 +1,9 @@
 // Create or edit a custom filter: a name and one or more "field is / is not / filled / empty" conditions.
 import { ask } from "@tauri-apps/plugin-dialog";
 import { useState } from "react";
-import { describeFilter, filterTest } from "../../lib/filters";
+import { isNumeric, leafFields } from "../../fields";
+import { describeFilter, filterTest, filterUsesDeletedField } from "../../lib/filters";
+import { numericOnly } from "../../lib/money";
 import { uid } from "../../lib/id";
 import { useDb } from "../../store/db";
 import { useUi } from "../../store/ui";
@@ -10,13 +12,16 @@ import { WHERE_OPS } from "../Totals/TotalBuilder";
 import { Dialog } from "../ui/Dialog";
 
 export function FilterEditor({ initial, onClose }: { initial: FilterDef | null; onClose(): void }) {
-  const fields = useDb((s) => s.fieldDefs);
+  const fields = useDb((s) => leafFields(s.fieldDefs));
   const statuses = useDb((s) => s.statuses);
   const bills = useDb((s) => s.bills);
-  const [f, setF] = useState<FilterDef>(initial ?? { id: uid(), label: "", conditions: [{ field: "status", op: "neq", value: statuses[0] ?? "" }] });
+  const statusField = fields.find((d) => d.type === "status");
+  const [f, setF] = useState<FilterDef>(initial ?? { id: uid(), label: "", conditions: [
+    statusField ? { field: statusField.key, op: "neq", value: statuses[0] ?? "" } : { field: fields[0]?.key ?? "", op: "filled" },
+  ] });
 
   const setCond = (i: number, patch: Partial<Where>) => setF({ ...f, conditions: f.conditions.map((w, j) => (j === i ? { ...w, ...patch } : w)) });
-  const addCond = () => setF({ ...f, conditions: [...f.conditions, { field: "memberName", op: "eq", value: "" }] });
+  const addCond = () => setF({ ...f, conditions: [...f.conditions, { field: (fields.find((d) => d.type === "text") ?? fields[0])?.key ?? "", op: "eq", value: "" }] });
   const sentence = describeFilter(f, fields);
   const n = bills.filter(filterTest(f.id, [f], [])!).length;
 
@@ -44,6 +49,7 @@ export function FilterEditor({ initial, onClose }: { initial: FilterDef | null; 
         <div className="tb-formula">{sentence}</div>
         <div className="tb-formula">= <b>{n}</b> bill{n === 1 ? "" : "s"} right now</div>
       </div>
+      {filterUsesDeletedField(f, fields) && <div className="tb-warn">⚠ This filter checks a field that was deleted. Pick another field or remove that condition.</div>}
       <input className="input" placeholder="Name (e.g. Ann's unpaid)" value={f.label} onChange={(e) => setF({ ...f, label: e.target.value })} autoFocus />
       <div className="tb-row">
         <span className="label">Show bills where</span>
@@ -53,6 +59,7 @@ export function FilterEditor({ initial, onClose }: { initial: FilterDef | null; 
             <div className="tb-line" key={i}>
               {i > 0 && <span className="muted">and</span>}
               <select className="input" value={w.field} onChange={(e) => setCond(i, { field: e.target.value, value: "" })}>
+                {!def && <option value={w.field} disabled>(deleted field)</option>}
                 {fields.map((d) => <option key={d.key} value={d.key}>{d.label}</option>)}
               </select>
               <select className="input" value={w.op} onChange={(e) => setCond(i, { op: e.target.value as WhereOp })}>
@@ -64,7 +71,9 @@ export function FilterEditor({ initial, onClose }: { initial: FilterDef | null; 
                   {statuses.map((s) => <option key={s} value={s}>{s}</option>)}
                 </select>
               ) : (
-                <input className="input" style={{ width: 140 }} placeholder="value" value={w.value ?? ""} onChange={(e) => setCond(i, { value: e.target.value })} />
+                <input className={`input ${def && isNumeric(def) ? "num" : ""}`} style={{ width: 140 }} placeholder="value" value={w.value ?? ""}
+                  inputMode={def && isNumeric(def) ? "decimal" : undefined}
+                  onChange={(e) => setCond(i, { value: def && isNumeric(def) ? numericOnly(e.target.value, def.type === "money") : e.target.value })} />
               ))}
               <span className="spacer" />
               <button className="icon-btn danger" title="Remove condition" onClick={() => setF({ ...f, conditions: f.conditions.filter((_, j) => j !== i) })}>✕</button>

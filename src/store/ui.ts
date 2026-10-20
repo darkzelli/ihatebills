@@ -21,10 +21,13 @@ const saved = load();
 
 interface UiState extends Saved {
   selectedId: string | null;
+  /** A day picked on the schedule (YYYY-MM-DD); the inspector lists its bills instead of one bill. */
+  selectedDate: string | null;
   search: string;
   /** Active bill list filter: `status:<name>` or a custom filter's id; null = all bills. */
   filter: string | null;
   select(id: string | null): void;
+  selectDate(d: string | null): void;
   setSearch(s: string): void;
   setFilter(f: string | null): void;
   /** Show or hide the filter row; hiding it also clears the active filter. */
@@ -42,9 +45,11 @@ export const useUi = create<UiState>((set, get) => {
   return {
     ...saved,
     selectedId: null,
+    selectedDate: null,
     search: "",
     filter: null,
-    select: (selectedId) => set({ selectedId }),
+    select: (selectedId) => set({ selectedId, selectedDate: null }),
+    selectDate: (selectedDate) => set(selectedDate ? { selectedDate, selectedId: null } : { selectedDate }),
     setSearch: (search) => set({ search }),
     setFilter: (filter) => set({ filter }),
     setShowFilters(showFilters) { set({ showFilters, ...(showFilters ? {} : { filter: null }) }); persist(); },

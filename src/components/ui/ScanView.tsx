@@ -5,6 +5,7 @@ import { openPath } from "@tauri-apps/plugin-opener";
 import { getDocument, GlobalWorkerOptions, type PDFDocumentProxy } from "pdfjs-dist";
 import workerUrl from "pdfjs-dist/build/pdf.worker.min.mjs?url";
 import { type ReactNode, useEffect, useRef, useState } from "react";
+import * as storage from "../../lib/storage";
 import * as core from "../../lib/tauri";
 import { useDb } from "../../store/db";
 import type { Attachment } from "../../types";
@@ -90,7 +91,7 @@ export function PdfView({ url, zoom = 1, thumb }: { url: string; zoom?: number; 
   const pages = doc ? (thumb ? 1 : doc.numPages) : 0;
   return (
     <div className={`pdf-view ${thumb ? "thumb-pdf" : ""}`} ref={box}>
-      {failed ? <div className="pdf-msg">{thumb ? "PDF" : "Couldn't display this PDF. Try opening it in the default app."}</div>
+      {failed ? <div className="pdf-msg">{thumb ? "PDF" : "Couldn't display this PDF. Try saving a copy and opening that."}</div>
         : Array.from({ length: pages }, (_, i) => <PdfPage key={i} doc={doc!} n={i + 1} width={pageWidth} />)}
     </div>
   );
@@ -109,14 +110,16 @@ const DOWNLOAD = "M12 4v11M7 10l5 5 5-5M5 20h14";
 export function ScanControls({ a, zoom, setZoom, children }: {
   a: Attachment; zoom: number; setZoom(z: number): void; children?: ReactNode;
 }) {
+  // Opening in another app would need a plaintext copy on disk, so it's off while encrypted.
+  const encrypted = storage.useVault((s) => s.status === "on");
   const fail = (e: unknown) => useDb.setState({ error: String(e) });
   const openExternal = async () => {
-    try { await openPath(await core.attachmentPath(a)); } catch (e) { fail(e); }
+    try { await openPath(await core.attachmentPath(a.file)); } catch (e) { fail(e); }
   };
   const download = async () => {
     const ext = a.file.split(".").pop() ?? "";
     const dest = await save({ defaultPath: a.name, filters: [{ name: ext.toUpperCase(), extensions: [ext] }] });
-    if (dest) core.exportAttachment(a.file, dest).catch(fail);
+    if (dest) storage.readAttachment(a).then((data) => core.exportFile(dest, data)).catch(fail);
   };
   const i = ZOOMS.indexOf(zoom);
   const isPdf = a.mime === "application/pdf";
@@ -131,7 +134,7 @@ export function ScanControls({ a, zoom, setZoom, children }: {
         </>
       )}
       {children}
-      <button className="icon-btn" title="Open in default app" onClick={openExternal}>↗</button>
+      {!encrypted && <button className="icon-btn" title="Open in default app" onClick={openExternal}>↗</button>}
       <button className="icon-btn" title="Save a copy…" onClick={download}><Icon d={DOWNLOAD} /></button>
     </span>
   );

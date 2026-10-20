@@ -1,5 +1,5 @@
-import { expect, it } from "vitest";
-import { centsToInput, parseCents } from "./money";
+import { describe, expect, it } from "vitest";
+import { centsToInput, numericOnly, parseCents } from "./money";
 
 it("parses typed amounts into cents", () => {
   expect(parseCents("$1,234.56")).toBe(123456);
@@ -12,3 +12,12 @@ it("parses typed amounts into cents", () => {
   expect(parseCents("1.2.3")).toBeNull();
 });
 it("round-trips", () => expect(parseCents(centsToInput(4550))).toBe(4550));
+
+describe("numericOnly", () => {
+  it("strips letters as they're typed", () => {
+    expect(numericOnly("12a3.4b")).toBe("123.4");
+    expect(numericOnly("$1,2x00.50", true)).toBe("$1,200.50");
+    expect(numericOnly("$5")).toBe("5");
+    expect(numericOnly("(12)", true)).toBe("(12)");
+  });
+});

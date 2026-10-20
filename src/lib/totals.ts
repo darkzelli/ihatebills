@@ -16,6 +16,19 @@ export function matches(b: Bill, w: Where | undefined): boolean {
   }
 }
 
+/** A field's label, or a placeholder once the field has been deleted. */
+export const fieldLabel = (k: string | undefined, fields: FieldDef[]) =>
+  k === undefined ? "?" : fields.find((f) => f.key === k)?.label ?? "(deleted field)";
+
+const aggFields = (a: Aggregate) => [a.field, a.where?.field].filter((k): k is string => !!k);
+
+/** Every field key a total reads. */
+export const totalFields = (t: TotalDef) =>
+  [...new Set([...aggFields(t.first), ...t.steps.flatMap((s) => (s.operand.kind === "agg" ? aggFields(s.operand.agg) : []))])];
+
+/** Whether a total reads a field that no longer exists. */
+export const usesDeletedField = (t: TotalDef, fields: FieldDef[]) => totalFields(t).some((k) => !fields.some((f) => f.key === k));
+
 /** NaN means "no answer" (average/min/max of nothing). */
 export function aggregate(a: Aggregate, bills: Bill[]): number {
   const rows = bills.filter((b) => matches(b, a.where));
@@ -64,7 +77,7 @@ const FN_WORD: Record<Aggregate["fn"], string> = { sum: "Sum", count: "Count", a
 const OP_WORD: Record<StepOp, string> = { "+": "plus", "-": "minus", "*": "times", "/": "divided by" };
 
 export function describeAgg(a: Aggregate, fields: FieldDef[]): string {
-  const label = (k?: string) => fields.find((f) => f.key === k)?.label ?? k ?? "?";
+  const label = (k?: string) => fieldLabel(k, fields);
   let s = a.fn === "count" ? "Count of bills" : `${FN_WORD[a.fn]} of ${label(a.field)}`;
   if (a.where) {
     const w = a.where;
@@ -85,7 +98,7 @@ const OP_SYM: Record<StepOp, string> = { "+": "+", "-": "−", "*": "×", "/": "
 const PREC: Record<StepOp, number> = { "+": 1, "-": 1, "*": 2, "/": 2 };
 
 export function formulaAgg(a: Aggregate, fields: FieldDef[]): string {
-  const label = (k?: string) => fields.find((f) => f.key === k)?.label ?? k ?? "?";
+  const label = (k?: string) => fieldLabel(k, fields);
   let s = a.fn === "count" ? "bills" : label(a.field);
   if (a.where) {
     const w = a.where;
