@@ -24,15 +24,20 @@ jobs:
     outputs:
       id: ${{ steps.release.outputs.id }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - id: release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           VER="$(node -p 'require("./package.json").version')"
           TAG="v$VER"
-          gh release view "$TAG" >/dev/null 2>&1 || gh release create "$TAG" --draft --title "ihatebills $VER" --notes "ihatebills $VER" --target "$GITHUB_SHA"
-          echo "id=$(gh api "repos/$GITHUB_REPOSITORY/releases" --jq ".[] | select(.tag_name == \"$TAG\") | .id" | head -1)" >> "$GITHUB_OUTPUT"
+          # Reuse a draft left by an earlier run of this tag; the releases list can lag behind a create,
+          # so a new release's id comes straight from the create response.
+          ID="$(gh api "repos/$GITHUB_REPOSITORY/releases" --jq ".[] | select(.tag_name == \"$TAG\" and .draft) | .id" | head -1)"
+          [ -n "$ID" ] || ID="$(gh api -X POST "repos/$GITHUB_REPOSITORY/releases" -f tag_name="$TAG" -f target_commitish="$GITHUB_SHA" \
+            -f name="ihatebills $VER" -f body="ihatebills $VER" -F draft=true --jq .id)"
+          [ -n "$ID" ] || { echo "could not create the release"; exit 1; }
+          echo "id=$ID" >> "$GITHUB_OUTPUT"
 
   build:
     needs: create
@@ -48,11 +53,11 @@ jobs:
             target: x86_64-pc-windows-msvc
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: pnpm/action-setup@v4
         with:
           version: 10
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: 22
           cache: pnpm
